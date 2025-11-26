@@ -1,0 +1,33 @@
+[iptables 로키리눅스 설정]
+
+systemctl stop firewalld
+systemctl disable firewalld
+dnf install -y iptables iptables-services
+iptables -F
+iptables -I INPUT  -s 218.146.11.0/24 -j ACCEPT
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
+
+
+
+도커컨테이너 구동시에 iptables 규칙이 자동 생성되는데
+이건 INPUT 체인규칙이랑 별개라 다열려서 외부에서 접속가능함
+별도의 방화벽이 있거나 외부망을 아예 차단하지 않으면 접속됨
+
+그래서 iptables 만으로 제어할때는
+# 1) 관련된 응답 패킷 허용
+iptables -A DOCKER-USER -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# 2) 내부 네트워크 허용
+iptables -A DOCKER-USER -s 10.20.20.0/24 -j ACCEPT
+iptables -A DOCKER-USER -s 192.168.1.0/24 -j ACCEPT
+iptables -A DOCKER-USER  -s 218.146.11.0/24 -j ACCEPT
+
+# 3) 나머지 모든 것 DROP (외부 전체 차단)
+iptables -A DOCKER-USER -j DROP
+
+DOCKER-USER 체인에서 규칙을 추가해줘야 외부에서 
+내부 컨테이너 직접 접근이 불가능하고 내가 허용한 대역만 허용이 가능함

@@ -1,0 +1,44 @@
+[로키리눅스 IP route 설정 라우팅]
+1단계: 현재 네트워크 상태 확인
+nmcli device status
+ip addr show
+ip route show
+
+2단계: 내부망 IP 설정
+nmcli con add type ethernet ifname eno2 con-name eno2 ipv4.addresses 10.20.20.11/24 ipv4.gateway 10.20.20.1 ipv4.method manual autoconnect yes
+*IF 이미 연결이 존재
+nmcli con mod eno2 ipv4.addresses 10.20.20.11/24
+nmcli con mod eno2 ipv4.gateway 10.20.20.1
+nmcli con mod eno2 ipv4.method manual
+nmcli con mod eno2 connection.autoconnect yes
+nmcli con up eno2
+라우팅 추가 (임시)
+ip route add 192.168.1.0/24 via 10.20.20.1 dev eno2
+영구
+vi /etc/NetworkManager/system-connections/eno2.nmconnection
+[connection]
+id=eno2
+uuid=9395a88d-de33-4716-ad12-1d5a261d8792
+type=ethernet
+interface-name=eno2
+timestamp=1758499442
+autoconnect=true *수정
+[ethernet]
+
+[ipv4]
+address1=192.168.1.11/24,192.168.1.1
+dns=8.8.8.8;168.126.63.1;
+method=manual
+routes1=10.20.20.0/24,192.168.1.1 *추가
+
+[ipv6]
+addr-gen-mode=eui64
+method=auto
+
+[proxy]
+===============================================================
+[로키리눅스 네트워크 대역폭]
+>auto 설정
+ethtool -s eno2 autoneg on
+> 속도지정
+ethtool -s eno2 speed 1000 duplex full autoneg on

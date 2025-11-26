@@ -1,0 +1,31 @@
+process_names:
+  # 공통 파이썬 프로세스
+  - name: "python_generic"
+    cmdline:
+      - '/home/py_env/'
+
+  # FastAPI / Uvicorn / Gunicorn 기반 주요 서비스
+  - name: "Service1
+    cmdline:
+      - 'uvicorn.*4040'
+  - name: "Service2"
+    cmdline:
+      - 'uvicorn.*14040'
+  - name: "Service3"
+    cmdline:
+      - 'uvicorn.*19000'
+  - name: "Service4"
+    cmdline:
+      - 'uvicorn.*19001'
+  - name: "Service5"
+    cmdline:
+      - 'gunicorn.*7010'
+  - name: "Service6"
+    cmdline:
+      - 'uvicorn.*7011'
+  - name: "Service7"
+    cmdline:
+      - 'uvicorn.*20010'
+
+      
+      

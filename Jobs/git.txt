@@ -1,0 +1,95 @@
+[git 사용법]
+
+1. 🔧 기본 설정
+git config --global user.name "홍길동"
+git config --global user.email "admin@example.com"
+
+2. 📂 저장소 최초 clone
+git clone https://gitea.example.com/org/repo.git
+cd repo
+
+3. 🌿 브랜치 (Branch)
+✔ 브랜치 목록 확인
+git branch              # 로컬 브랜치
+git branch -a           # 로컬 + 원격 모두
+
+✔ 브랜치 생성
+git branch feature/api
+
+✔ 브랜치 생성 + 바로 이동(실무에서 가장 많이 씀)
+git checkout main
+git checkout develop
+
+✔ 브랜치 삭제
+git branch -d feature/api
+git branch -D feature/api     # 강제 삭제
+
+✔ 원격 브랜치 삭제
+git push origin --delete feature/api
+
+4. ✏ 파일 작업 → 커밋
+✔ 작업 파일 확인
+git status
+
+✔ 특정 파일 추가
+git add app.py
+
+✔ 전체 파일 추가
+git add .
+
+✔ 커밋
+git commit -m "API 기능 추가"
+
+5. 📤 Push (원격 저장소로 업로드)
+✔ 처음 브랜치를 push할 때
+git push -u origin feature/api
+
+✔ 이후부터는 간단히
+git push
+
+
+6. 📥 Fetch & Pull
+✔ 원격의 변경사항 가져오기 (fetch = 가져오기만)
+git fetch
+
+✔ 패치와 병합까지 자동 처리 (pull = fetch + merge)
+git pull
+
+
+✔ 특정 브랜치 pull
+git pull origin main
+
+7. 🏷 Tag (배포용 실무에서 많이 씀)
+✔ 태그 생성 (annotated tag 권장)
+git tag -a v1.0.0 -m "첫 번째 릴리즈"
+
+✔ 태그 목록 확인
+git tag
+
+✔ 태그 push
+git push origin v1.0.0
+
+✔ 모든 태그 push
+git push origin --tags
+
+
+8. 🔄 Checkout (과거 버전/브랜치 이동)
+✔ 브랜치 이동
+git checkout main
+✔ 태그로 이동(Detached HEAD 상태)
+
+9. 🔧 Merge(병합)
+✔ feature → main으로 병합하는 흐름
+git checkout main
+git pull origin main
+git merge feature/api
+git push
+
+10. 🧹 Conflict 해결 기본 흐름
+
+충돌 난 파일을 직접 수정
+
+수정 후:
+git add .
+git commit
+git push

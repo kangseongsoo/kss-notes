@@ -1,0 +1,46 @@
+## 도커 관련 메모
+✅ 컨테이너 실행 / 정지 / 삭제
+목적                           명령어
+----------------------------    -------------------------------------------------------------
+컨테이너 실행                   docker run -d --name [이름] [이미지]
+포트 바인딩 실행                docker run -d -p 8080:80 --name [이름] [이미지]
+일회성 실행                     docker run --rm [이미지]
+컨테이너 정지                   docker stop [컨테이너ID/이름]
+컨테이너 시작                   docker start [컨테이너ID/이름]
+컨테이너 재시작                 docker restart [컨테이너ID/이름]
+컨테이너 삭제                   docker rm [컨테이너ID/이름]
+실행 중 컨테이너 접속           docker exec -it [이름] /bin/bash
+
+🐳 이미지 관련
+목적                           명령어
+----------------------------    -------------------------------------------------------------
+이미지 다운로드                 docker pull [이미지명:태그]
+이미지 목록 확인                docker images
+이미지 삭제                     docker rmi [이미지ID/이름]
+이미지 생성                     docker build -t [이름:태그] .
+
+📦 컨테이너 상태 확인
+목적                           명령어
+----------------------------    -------------------------------------------------------------
+실행 중 컨테이너 확인           docker ps
+모든 컨테이너 확인(종료 포함)   docker ps -a
+로그 확인                       docker logs [이름]
+실시간 로그 확인                docker logs -f [이름]
+리소스 사용량 확인              docker stats
+
+🔄 Docker Compose
+목적                           명령어
+----------------------------    -------------------------------------------------------------
+컨테이너 실행                   docker-compose up -d
+컨테이너 중지                   docker-compose down
+재빌드 및 실행                  docker-compose up -d --build
+상태 확인                       docker-compose ps
+로그 보기                       docker-compose logs
+
+📁 시스템 정리 / 정비
+목적                           명령어
+----------------------------    -------------------------------------------------------------
+사용하지 않는 리소스 정리        docker system prune -a
+모든 이미지 삭제                docker rmi $(docker images -q)
+모든 컨테이너 삭제              docker rm $(docker ps -aq)
+모든 볼륨 삭제                  docker volume rm $(docker volume ls -q)

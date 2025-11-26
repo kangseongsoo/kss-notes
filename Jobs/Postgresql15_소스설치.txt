@@ -1,0 +1,118 @@
+[포스트그레 15 소스 설치]
+
+postgresql 15 
+
+sudo dnf groupinstall -y "Development Tools"
+sudo dnf install -y readline-devel zlib-devel openssl-devel libuuid-devel libicu-devel perl-devel tcl-devel libxslt libxslt-devel
+
+
+cd /usr/local/src
+sudo wget https://ftp.postgresql.org/pub/source/v15.8/postgresql-15.8.tar.gz
+sudo tar xvf postgresql-15.8.tar.gz
+cd postgresql-15.8
+
+
+./configure --prefix=/home/postgresql \
+            --with-openssl \
+            --with-libxml \
+            --with-libxslt \
+            --with-uuid=ossp
+
+make -j$(nproc)
+sudo make install
+
+/home/postgresql/bin/postgres --version
+echo 'export PATH=/home/postgresql/bin:$PATH' >> ~/.bash_profile
+source ~/.bash_profile
+
+
+sudo useradd -m -s /bin/bash postgres
+chown -R postgres:postgres /home/postgresql
+sudo -i -u postgres
+sudo mkdir -p /home/postgresql_data
+sudo chown -R postgres:postgres /home/postgresql /home/postgresql_data
+
+echo 'export PATH=/home/postgresql/bin:$PATH' >> ~/.bash_profile
+source ~/.bash_profile
+
+initdb -D /home/postgresql_data
+
+
+/home/postgresql/bin/pg_ctl -D /home/postgresql_data -l logfile start
+
+exit (root계정으로 전환)
+sudo vi /etc/systemd/system/postgresql.service
+[Unit]
+Description=PostgreSQL 15 database server
+After=network.target
+
+[Service]
+Type=forking
+User=postgres
+Group=postgres
+ExecStart=/home/postgresql/bin/pg_ctl start -D /home/postgresql_data -l /home/postgresql_data/logfile
+ExecStop=/home/postgresql/bin/pg_ctl stop -D /home/postgresql_data -m fast
+ExecReload=/home/postgresql/bin/pg_ctl reload -D /home/postgresql_data
+PIDFile=/home/postgresql_data/postmaster.pid
+
+[Install]
+WantedBy=multi-user.target
+
+sudo systemctl daemon-reload
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+
+--pgvector설치--
+cd /usr/local/src
+sudo git clone https://github.com/pgvector/pgvector.git
+cd pgvector
+make PG_CONFIG=/home/postgresql/bin/pg_config
+sudo make install PG_CONFIG=/home/postgresql/bin/pg_config
+
+
+psql -U postgres
+CREATE EXTENSION vector;
+
+# 설치 위치확인
+/home/postgresql/bin/pg_config --sharedir
+
+
+
+------슬레이브 걸기
+1단계 – 슬레이브 DB 정지 및 데이터 삭제
+sudo systemctl stop postgresql
+sudo -i -u postgres
+rm -rf /home/postgresql_data/*
+
+2단계 – 베이스백업으로 복제 초기화
+마스터 서버에서 pg_hba.conf 에 슬레이브 IP 추가:
+host replication postgres 10.20.20.12/32 md5
+
+
+슬레이브 에서:
+sudo -i -u postgres
+/home/postgresql/bin/pg_basebackup \
+  -h 192.168.1.11 \
+  -U replicator \
+  -D /home/postgresql_data \
+  -P -R
+
+
+(계정은 마스터에서 생성해놓고 허용해줘야됨)
+
+-R 옵션은 standby.signal 파일을 자동 생성하여 복제모드로 전환
+복제용 비밀번호는 마스터에서 CREATE ROLE replicator REPLICATION LOGIN PASSWORD '***'; 형태로 준비해도 OK
+
+3단계 – postgresql.conf (슬레이브 쪽) 설정
+primary_conninfo = 'host=192.168.1.11 port=5432 user=replicator password=<replicator비밀번호>'
+hot_standby = on
+
+
+리플 확인
+
+마스터:
+psql -U postgres -c "SELECT pid, client_addr, state, sent_lsn, write_lsn, flush_lsn, replay_lsn, sync_state FROM pg_stat_replication;"
+
+슬레이브:
+psql -U postgres -c "SELECT status, receive_start_lsn, written_lsn, flushed_lsn, received_tli, last_msg_send_time, last_msg_receipt_time, latest_end_lsn, latest_end_time FROM pg_stat_wal_receiver;"
+

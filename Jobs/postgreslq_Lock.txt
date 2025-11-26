@@ -1,0 +1,108 @@
+PostgreSQL에서 DB Lock(잠금) 
+
+1단계: Lock의 기본 개념
+| 락 종류                     | 설명                                      |
+| ------------------------ | --------------------------------------- |
+| `ACCESS SHARE`           | SELECT 시 자동으로 걸림 (다른 트랜잭션이 동시에 읽을 수 있음) |
+| `ROW SHARE`              | SELECT … FOR UPDATE/SHARE 시 걸림          |
+| `ROW EXCLUSIVE`          | INSERT, UPDATE, DELETE 시 걸림             |
+| `SHARE UPDATE EXCLUSIVE` | VACUUM 시 걸림                             |
+| `ACCESS EXCLUSIVE`       | DDL(테이블 구조 변경) 시 걸림, 가장 강력한 락           |
+
+
+🔹 2단계: 특정 테이블에 Lock 설정
+예를 들어 users 테이블 전체를 잠그고 싶다면 다음 명령을 사용합니다:
+BEGIN;
+LOCK TABLE users IN ACCESS EXCLUSIVE MODE;
+-- 이 상태에서 다른 세션은 users 테이블에 INSERT/UPDATE/DELETE 불가
+-- 필요한 작업을 수행한 후
+COMMIT;
+
+이렇게 하면 해당 트랜잭션이 완료될 때까지 다른 트랜잭션은 접근할 수 없습니다.
+
+🔹 3단계: 전체 데이터베이스에 Lock 걸기 (쓰기 금지)
+
+PostgreSQL은 데이터베이스 단위 Lock은 직접 제공하지 않지만,
+전체 DB를 읽기 전용 모드(read-only) 로 전환할 수 있습니다.
+방법 ① — SQL로 트랜잭션 수준 설정
+BEGIN;
+SET TRANSACTION READ ONLY;
+-- 읽기 전용 쿼리만 가능
+COMMIT;
+이건 현재 세션에만 적용됩니다.
+
+방법 ② — 전체 DB를 read-only로 변경
+
+DB 관리자가 전체 인스턴스를 읽기 전용으로 설정하려면 postgresql.conf 또는 세션에서 아래를 설정합니다:
+ALTER DATABASE your_db_name SET default_transaction_read_only = on;
+
+변경 후, 기존 연결은 그대로 유지되므로 재접속해야 적용됩니다.
+복구 시에는 다음과 같이 되돌립니다:
+ALTER DATABASE your_db_name SET default_transaction_read_only = off;
+
+
+방법 ③ — 인스턴스 레벨 설정
+PostgreSQL 인스턴스 전체를 읽기 전용으로 만들려면 postgresql.conf 수정:
+# vim /var/lib/pgsql/data/postgresql.conf
+default_transaction_read_only = on
+# systemctl restart postgresql
+🔹 4단계: 특정 유저만 Lock 적용
+특정 사용자에게만 쓰기 금지하려면 권한을 조정할 수도 있습니다.
+REVOKE INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public FROM user_name;
+
+🔹 5단계: 현재 Lock 상태 확인
+
+현재 어떤 세션이 어떤 테이블을 잠그고 있는지 확인하려면:
+SELECT pid, locktype, relation::regclass, mode, granted
+FROM pg_locks
+JOIN pg_stat_activity USING (pid)
+WHERE datname = 'your_db_name';
+
+
+
+
+| 목표          | 방법                                                          |
+| ----------- | ----------------------------------------------------------- |
+| 전체 DB 읽기 전용 | `ALTER DATABASE ... SET default_transaction_read_only = on` |
+| 특정 테이블 잠금   | `LOCK TABLE table_name IN ACCESS EXCLUSIVE MODE`            |
+| 특정 유저 쓰기 금지 | `REVOKE INSERT, UPDATE, DELETE ON ALL TABLES`               |
+| 현재 Lock 확인  | `SELECT ... FROM pg_locks`                                  |
+
+
+##################### 슬레이브 해제
+/home/postgresql_data/standby.signal
+삭제
+
+
+밀버스 수요일까지
+
+dev.chatbaram.com
+/home/chat_bot/Chatty_Project
+/home/chat_bot/Chatty_Project_2
+/home/chat_bot/Ai_Pro_Trans
+/home/chat_bot/Ai_Pro_Trans_DEV
+/home/chat_bot/Graph_TEST/
+/home/chat_bot/Graph_TEST_DEV/
+
+aisearch.chatbaram.com
+/home/chat_bot/Ai_Pro_Search
+/home/chat_bot/Ai_Pro_Search_DEV
+
+aicrawling.chatbaram.com
+/home/chat_bot/AI_NEWS/
+/home/chat_bot/AI_NEWS_DEV/
+/home/chat_bot/ai_pro_crawling
+/home/chat_bot/ai_pro_crawling_DEV
+
+#####
+
+마스터 디비 종료
+슬레이브 디비 종료
+슬레이브 
+/home/postgresql_data/standby.signal 삭제
+
+/home/postgresql_data/postgresql.auto.conf 안에 리플정보 주석
+시작
+
+서비스 config 정보 변경후 재시작
+

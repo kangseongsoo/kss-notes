@@ -1,0 +1,48 @@
+groups:
+  - name: system_alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100 > 80
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "[경고] {{ $labels.instance }} 서버 CPU"
+          description: "사용량: {{ $value }}% (80% 초과)"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "[경고] {{ $labels.instance }} 서버 메모리"
+          description: "사용량: {{ $value }}% (85% 초과)"
+
+      - alert: RootDiskUsageHigh
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 90
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "[경고] {{ $labels.instance }} 서버 루트 파티션"
+          description: "사용량: {{ $value }}% (90% 초과)."
+
+      - alert: HomeDiskUsageHigh
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/home"} / node_filesystem_size_bytes{mountpoint="/home"})) * 100 > 90
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "[경고] {{ $labels.instance }} 서버 홈 파티션"
+          description: "사용량: {{ $value }}% (90% 초과)."
+
+      - alert: ProcessNotRunning
+        expr: namedprocess_namegroup_num_procs == 0
+        for: 30s
+        labels:
+          severity: critical
+          groupname: "{{ $labels.groupname }}"  # 프로세스 그룹명 포함
+        annotations:
+          summary: "[경고] {{ $labels.instance }} 서버 프로세스 {{ $labels.groupname }}"
+          description: "중단"

@@ -1,0 +1,468 @@
+✅ 1. Prometheus 공식 바이너리 다운로드 및 설치
+
+📌 (1) 최신 버전 확인 및 다운로드
+# 최신 버전 확인 (출력된 URL을 확인하세요)
+curl -s https://api.github.com/repos/prometheus/prometheus/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4
+
+# 최신 버전 다운로드 (예: 3.2.1 버전)
+wget https://github.com/prometheus/prometheus/releases/download/v3.2.1/prometheus-3.2.1.linux-amd64.tar.gz
+
+
+# 압축 해제
+tar xvf prometheus-*.tar.gz
+
+# 실행 파일을 이동
+mv prometheus-*.linux-amd64 /usr/local/prometheus
+
+📌 (2) Prometheus 실행 파일 및 설정 복사
+# 사용자 및 그룹 생성
+useradd --no-create-home --shell /bin/false prometheus
+
+# 실행 파일 복사
+cp prometheus-3.2.1.linux-amd64/prometheus /usr/local/bin/
+cp prometheus-3.2.1.linux-amd64/promtool /usr/local/bin/
+
+# 설정 및 데이터 디렉토리 생성
+mkdir -p /etc/prometheus /var/lib/prometheus
+chown -R prometheus:prometheus /var/lib/prometheus
+
+# 설정 파일 복사
+cp prometheus-3.2.1.linux-amd64/prometheus.yml /etc/prometheus/prometheus.yml
+
+# 권한 설정
+chown -R prometheus:prometheus /etc/prometheus
+
+# 설정 수정
+vi /etc/prometheus/prometheus.yml
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: "prometheus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["dev.chatbaram.com:9090"] ## 타겟 호스트 설정
+
+✅ 2. Prometheus 서비스 등록
+cat <<EOF | tee /etc/systemd/system/prometheus.service
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/bin/prometheus \\
+  --config.file=/etc/prometheus/prometheus.yml \\
+  --storage.tsdb.path=/var/lib/prometheus/ \\
+  --web.listen-address="0.0.0.0:9090"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+✅ 3. Prometheus 실행 및 확인
+# systemd 서비스 적용
+systemctl daemon-reload
+
+# Prometheus 서비스 시작 및 자동 실행 설정
+systemctl enable --now prometheus
+
+# 상태 확인
+systemctl status prometheus
+✅ 4. Prometheus 실행 확인
+📌 (1) 웹 브라우저에서 확인
+http://<서버_IP or HOST>:9090
+
+----------------------------------------------------
+✅ 1. Node Exporter 설치 및 실행
+Node Exporter는 Prometheus가 서버의 하드웨어 및 OS 메트릭을 수집할 수 있도록 해줍니다.
+📌 (1) Node Exporter 다운로드
+# 최신 버전 확인 (출력된 URL 확인)
+curl -s https://api.github.com/repos/prometheus/node_exporter/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4
+
+
+# 예: 1.9.0 버전 다운로드 (버전 확인 후 업데이트 필요)
+wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz
+
+# 압축 해제
+tar xvf node_exporter-*.tar.gz
+
+# 실행 파일 이동
+mv node_exporter-*.linux-amd64 /usr/local/node_exporter
+cp /usr/local/node_exporter/node_exporter /usr/local/bin/
+
+📌 (2) Node Exporter 서비스 등록
+cat <<EOF | tee /etc/systemd/system/node_exporter.service
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+EOF
+📌 (3) 서비스 실행 및 확인
+# systemd 서비스 적용
+systemctl daemon-reload
+
+# Node Exporter 서비스 시작 및 자동 실행 설정
+systemctl enable --now node_exporter
+
+# 상태 확인
+systemctl status node_exporter
+
+### 포트 변경할경우
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/node_exporter --web.listen-address=":9190"
+
+[Install]
+WantedBy=multi-user.target
+
+
+📌 확인 방법
+Node Exporter는 기본적으로 포트 9100에서 실행됩니다.
+터미널에서 확인하려면:
+curl http://localhost:9100/metrics
+curl http://localhost:9190/metrics
+
+✅ 2. Prometheus에 Node Exporter 추가
+📌 Prometheus 설정 파일 수정
+vi /etc/prometheus/prometheus.yml
+# Global settings
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "node_exporter"
+    static_configs:
+      - targets: ["localhost:9100"]   ## 9190
+
+📌 Prometheus 설정 반영
+systemctl restart prometheus
+
+
+-------------------------------------------------------
+✅ 1. Grafana 설치
+Grafana는 Prometheus 데이터를 보기 좋게 대시보드로 시각화하는 도구입니다.
+
+📌 (1) Grafana 패키지 설치
+dnf install -y grafana
+
+📌 설치 확인
+grafana-server -v
+
+✅ 2. Grafana 웹 UI 접속 및 로그인
+웹 브라우저에서 Grafana UI에 접속합니다.
+
+➡ http://<서버_IP>:3000
+
+📌 기본 로그인 정보
+
+ID: admin
+Password: admin (첫 로그인 시 변경 요청)
+로그인 후, Data Sources에서 Prometheus를 추가할 수 있습니다.
+
+✅ 3. Grafana에서 Prometheus 데이터 소스 추가
+1️⃣ Grafana UI 접속 (http://<서버_IP>:3000)
+2️⃣ 왼쪽 메뉴에서 ⚙️ 설정(Settings) → Data Sources 선택 (메뉴에 connections 안에 있다)
+3️⃣ Add data source 버튼 클릭
+4️⃣ Prometheus 선택
+5️⃣ Prometheus 설정
+
+URL: http://localhost:9090
+Scrape Interval: 15s
+Save & Test 버튼 클릭 → 성공 메시지 확인
+
+✅ 4. Grafana에서 Prometheus 대시보드 추가
+📌 (1) 기본 Node Exporter 대시보드 가져오기
+1️⃣ Grafana UI (http://<서버_IP>:3000)
+2️⃣ 왼쪽 메뉴에서 + (Create) → Import 클릭
+3️⃣ Dashboard ID 입력: 1860
+
+https://grafana.com/grafana/dashboards/1860 (Node Exporter 대시보드)
+4️⃣ Prometheus 데이터 소스 선택 (http://localhost:9090)
+5️⃣ Import 버튼 클릭
+
+✅ 4. 대시보드 설정
+1️⃣ Dashboard Title 확인 (예: Node Exporter Full)
+2️⃣ Prometheus 데이터 소스 선택
+
+Prometheus 데이터 소스를 http://localhost:9090로 지정
+3️⃣ Import 버튼 클릭
+🚀 대시보드가 추가되었으면, 서버의 CPU, 메모리, 디스크 사용량 그래프가 표시됩니다!
+
+---------------------------------------------------------------------------------
+
+🚀 경로별 Python 프로세스 모니터링
+Process Exporter는 Prometheus가 특정 프로세스의 CPU 및 메모리 사용량을 수집할 수 있도록 합니다.
+✅ 1. Process Exporter 설치
+📌 1. Process Exporter 다운로드 및 설치
+
+# 최신 버전 다운로드 (출력된 URL 확인 후 실행)
+curl -s https://api.github.com/repos/ncabatoff/process-exporter/releases/latest | grep "browser_download_url.*linux-amd64.tar.gz" | cut -d '"' -f 4
+
+# 예제 (버전 확인 후 실행)
+wget https://github.com/ncabatoff/process-exporter/releases/download/v0.7.10/process-exporter-0.7.10.linux-amd64.tar.gz
+
+# 압축 해제
+tar xvf process-exporter-*.tar.gz
+
+# 실행 파일 이동
+mv process-exporter-*.linux-amd64 /usr/local/process-exporter
+cp /usr/local/process-exporter/process-exporter /usr/local/bin/
+
+✅ 2. Process Exporter 설정 (경로별 Python 프로세스 모니터링)
+📌 1. 설정 파일 생성
+vi /etc/process-exporter.yml
+📌 아래 설정을 추가하세요.
+process_names:
+  - name: "Chatty_app"      
+    cmdline:
+      - "python"
+      - "/home/chat_bot/Chatty_Project/edu.py"
+
+  - name: "Chatty_edu"      
+    cmdline:
+      - "python"
+      - "/home/chat_bot/Chatty_Project/app.py"
+
+  - name: "KSS_app"       
+    cmdline:
+      - "python"
+      - "/home/KSS_TEST_CHATBOT/app.py"
+
+  - name: "KSS_edu"       
+    cmdline:
+      - "python"
+      - "/home/KSS_TEST_CHATBOT/edu.py"
+
+✅ 3. Process Exporter 서비스 등록
+cat <<EOF | tee /etc/systemd/system/process-exporter.service
+[Unit]
+Description=Process Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/process-exporter --config.path /etc/process-exporter.yml --web.listen-address="0.0.0.0:9256"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+✅ 4. Process Exporter 실행 및 확인
+
+# 서비스 등록 및 실행
+systemctl daemon-reload
+systemctl enable --now process-exporter
+systemctl status process-exporter
+
+curl http://localhost:9256/metrics | grep process_
+
+✅ 5. Prometheus에서 Process Exporter 데이터 추가
+📌 Prometheus 설정 파일 수정
+vi /etc/prometheus/prometheus.yml
+📌 아래 내용을 scrape_configs 항목에 추가
+scrape_configs:
+  - job_name: "process_exporter"
+    static_configs:
+      - targets: ["localhost:9256"]
+
+📌 Prometheus 재시작  
+systemctl restart prometheus
+📌 Prometheus 웹 UI (http://<서버_IP>:9090/targets)에서 process_exporter가 UP 상태인지 확인
+
+✅ 6. Grafana에서 개별 Python 프로세스 리소스 시각화
+📌 Grafana에서 Process Exporter 대시보드 추가 1️⃣ Grafana 웹 UI 접속 (http://<서버_IP>:3000)
+2️⃣ + → Import 클릭
+3️⃣ Dashboard ID 입력: 22161
+
+Grafana Dashboard 22161 (Process Exporter Monitoring)
+4️⃣ Prometheus 데이터 소스 선택 (http://localhost:9090)
+5️⃣ Import 버튼 클릭 → edu_main, edu_test, edu_dev 개별 프로세스 리소스 확인 가능!
+
+✅ 7. 특정 Python 프로세스 리소스 확인 (PromQL 쿼리)
+Prometheus 웹 UI에서 http://<서버_IP>:9090 접속 후 PromQL을 실행하면 특정 Python 프로세스의 CPU/메모리를 확인할 수 있습니다.
+📌 경로별 Python 프로세스 CPU 사용량
+process_cpu_seconds_total{job="process_exporter", name="Chatty_app"}
+📌 경로별 Python 프로세스 메모리 사용량
+process_resident_memory_bytes{job="process_exporter", name="Chatty_app"}
+📌 경로별 Python 프로세스 열린 파일 핸들 개수
+process_open_fds{job="process_exporter", name="Chatty_app"}
+
+✅ 마무리
+✔ 같은 파일명을 가진 Python(edu.py) 프로세스라도 실행 경로별로 개별 모니터링 가능
+✔ Prometheus에서 특정 Python 프로세스 리소스 수집 후 Grafana에서 시각화 가능
+✔ PromQL을 사용하여 특정 프로세스의 CPU, 메모리, 파일 핸들 모니터링 가능
+
+
+---------------------------------------------------------------------------
+✅ Alertmanager & Webhook 설치 및 설정 가이드
+현재 Prometheus의 Alertmanager를 설치하여 서버 및 프로세스 리소스 임계값 초과 시 알림을 보내고, Webhook을 통해 특정 스크립트를 실행하는 기능을 구축하려 합니다.
+🚀 1. Alertmanager 설치
+📌 1️⃣ Alertmanager 바이너리 다운로드 및 설치
+mkdir -p /usr/local/alertmanager
+cd /usr/local/alertmanager
+
+# 최신 버전 확인 후 다운로드
+ALERTMANAGER_VERSION=$(curl -s https://api.github.com/repos/prometheus/alertmanager/releases/latest | grep tag_name | cut -d '"' -f 4)
+wget https://github.com/prometheus/alertmanager/releases/download/v0.28.0/alertmanager-0.28.0.linux-amd64.tar.gz
+
+# 압축 해제 및 실행 권한 부여
+tar xvf alertmanager-0.28.0.linux-amd64.tar.gz
+mv alertmanager-0.28.0.linux-amd64/alertmanager /usr/local/bin/
+mv alertmanager-0.28.0.linux-amd64/amtool /usr/local/bin/
+
+📌 2️⃣ Alertmanager 설정 파일 생성
+mkdir -p /etc/alertmanager
+vi /etc/alertmanager/alertmanager.yml
+
+📌 Alertmanager 기본 설정 예제 
+route:
+  receiver: "sms_alert"
+
+receivers:
+  - name: "sms_alert"
+    command: "/opt/send_sms.sh {{ .CommonAnnotations.summary }} {{ .Labels.instance }} {{ .Value }}"
+
+
+
+📌 3️⃣ Alertmanager 서비스 등록
+cat <<EOF | tee /etc/systemd/system/alertmanager.service
+[Unit]
+Description=Prometheus Alertmanager
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --cluster.listen-address=""
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+📌 4️⃣ Alertmanager 실행 및 상태 확인
+systemctl daemon-reload
+systemctl enable --now alertmanager
+systemctl status alertmanager
+
+📌 5️⃣ Alertmanager가 정상적으로 실행되었는지 확인
+curl http://localhost:9093/api/v1/status
+✅ 정상 실행 시 JSON 응답 확인 가능!
+
+🚀 2. Prometheus에 Alertmanager 연동
+📌 1️⃣ Prometheus 설정 파일 (prometheus.yml) 수정
+vi /etc/prometheus/prometheus.yml
+📌 아래 내용을 추가
+rule_files:
+  - /etc/prometheus/alert-rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["localhost:9093"]
+
+📌 2️⃣ Prometheus 재시작
+systemctl restart prometheus
+📌 3️⃣ Alert Rule 설정 파일 (/etc/prometheus/alert-rules.yml) 생성
+groups:
+  - name: system_alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High CPU Usage"
+          description: "CPU usage exceeded 80% for 1 minute."
+      
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Memory Usage"
+          description: "Memory usage exceeded 85% for 2 minutes."
+
+      - alert: DiskUsageHigh
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk Space Low"
+          description: "Disk usage is above 80%. Consider clearing space."
+
+      - alert: ProcessNotRunning
+        expr: namedprocess_namegroup_num_procs == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Process Down"
+          description: "Process {{ $labels.groupname }} is not running!"
+
+
+
+📌 4️⃣ Prometheus 재시작하여 Alert Rule 적용
+systemctl restart prometheus
+
+
+
+
+
+
+✅ 1단계: 필요한 라이브러리 설치
+먼저 prometheus-client와 prometheus-fastapi-instrumentator 패키지를 설치했는지 확인하고, 설치되지 않았다면 실행하세요.
+pip install prometheus-client prometheus-fastapi-instrumentator
+

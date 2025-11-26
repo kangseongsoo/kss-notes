@@ -1,0 +1,9 @@
+[nas nfs 연결]
+#dnf install -y nfs-utils
+#systemctl enable --now nfs-client.target
+#mkdir -p /NAS/data
+#mount -t nfs -o vers=4 10.20.20.11:/volume1/data /NAS/data
+#vi /etc/fstab
+10.20.20.11:/volume1/data  /NAS/data  nfs  defaults,_netdev,vers=4  0  0
+10.20.20.11:/volume1/data_dev  /NAS/data_dev  nfs  defaults,_netdev,vers=4  0  0
+10.20.20.11:/volume1/BACKUP  /NAS/BACKUP  nfs  defaults,_netdev,vers=4  0  0

@@ -1,0 +1,95 @@
+### 파이썬 3.11 소스설치
+
+
+🧩 1단계: 사전 패키지 설치
+# Rocky / CentOS / RHEL 계열
+dnf install -y tar gzip bzip2 unzip wget curl vim net-tools bind-utils lsof iproute iputils procps-ng util-linux which sudo less
+dnf install -y rsync tree htop ncdu jq
+
+sudo dnf groupinstall "Development Tools" -y
+sudo dnf config-manager --set-enabled crb	(로키10)
+sudo dnf install -y openssl-devel bzip2-devel libffi-devel \
+                   zlib-devel readline-devel sqlite-devel \
+                   xz-devel tk-devel gdbm-devel ncurses-devel \
+                   uuid-devel wget
+
+🧩 2단계: Python 소스 다운로드 및 압축 해제
+cd /usr/local/src
+wget https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tgz
+tar -xvf Python-3.11.9.tgz
+cd Python-3.11.9
+
+🧩 3단계: configure 설정
+./configure --prefix=/usr/local/python3.11 \
+            --enable-optimizations \
+            --enable-shared \
+            LDFLAGS="-Wl,-rpath /usr/local/python3.11/lib"
+옵션 설명:
+--enable-optimizations: 빌드 시 최적화 (속도 향상, 빌드 시간 ↑)
+--enable-shared: libpython3.11.so 생성 (다른 프로그램에서 참조 가능)
+--prefix: 설치 경로 지정
+LDFLAGS: 런타임 라이브러리 경로 등록 (LD_LIBRARY_PATH 불필요하게)			
+
+🧩 4단계: 컴파일 및 설치
+make -j$(nproc)
+sudo make altinstall
+
+* altinstall을 사용하면 /usr/bin/python 기본 버전을 덮어쓰지 않습니다.
+
+🧩 5단계: 환경 변수 등록
+sudo ln -s /usr/local/python3.11/bin/python3.11 /usr/bin/python3.11
+sudo ln -s /usr/local/python3.11/bin/pip3.11 /usr/bin/pip3.11
+
+echo 'export PATH=/usr/local/python3.11/bin:$PATH' | sudo tee /etc/profile.d/python3.11.sh
+source /etc/profile.d/python3.11.sh
+
+🧩 6단계: 설치 확인
+python3.11 -V
+# Python 3.11.9
+
+pip3.11 -V
+# pip 23.x from ...
+
+
+####가상환경 복사
+🔹 1단계: Python 3.11.9 설치 (동일 위치)
+
+이미 설치된 서버에서 Python 설정을 확인합니다.
+/usr/local/python3.11/bin/python3.11 -V
+# Python 3.11.9
+
+/usr/local/python3.11/bin/python3.11 -m sysconfig | grep prefix
+
+동일 prefix여야한다.
+
+🔹 2단계: 가상환경 복사
+rsync -avz /home/py_env/chatbot_env root@<새서버IP>:/home/py_env/
+
+🔹 3단계: 경로 수정 (activate 스크립트)
+가상환경 내부에는 Python 경로가 절대경로로 기록되어 있습니다.
+'''
+확인 명령:
+head -n 1 /home/py_env/chatbot_env/bin/activate
+예시 출력:
+VIRTUAL_ENV="/home/py_env/chatbot_env"
+'''
+
+만약 경로나 Python 위치가 다르다면 수정합니다.
+bin/activate, pyvenv.cfg 두 곳만 수정하면 됩니다 👇
+# vi /home/py_env/chatbot_env/pyvenv.cfg
+home = /usr/local/python3.11/bin
+include-system-site-packages = false
+version = 3.11.9
+
+🔹 4단계: 테스트
+source /home/py_env/chatbot_env/bin/activate
+which python
+# /home/py_env/chatbot_env/bin/python
+
+python -V
+# Python 3.11.9
+pip list | head
+
+
+
+----------uv로 하는법
