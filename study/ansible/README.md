@@ -1,23 +1,31 @@
-✅ 1단계: Ansible Control Node(node1) 세팅
-🔧 (1) 패키지 업데이트 & 툴 설치
+# ✅ 1단계: Ansible Control Node(node1) 세팅
+- 🔧 (1) 패키지 업데이트 & 툴 설치
+```
 dnf update -y
 dnf install epel-release -y
 dnf install vim git python3 python3-pip -y
-🔧 (2) Ansible 설치
+```
+-- 🔧 (2) Ansible 설치
+```
 dnf install ansible -y
-🔑 (3) SSH 키 생성
+```
+- 🔑 (3) SSH 키 생성
+```
 ssh-keygen
 ls ~/.ssh
-🔐 (4) SSH 공개키를 node2·node3에 배포
+```
+- 🔐 (4) SSH 공개키를 node2·node3에 배포
+```
 ssh-copy-id root@192.168.219.106
 ssh-copy-id root@192.168.219.107
+```
 
-✅ 2단계: Inventory 작성 + Ping 테스트
+# ✅ 2단계: Inventory 작성 + Ping 테스트
 Inventory 파일 생성
 권한/설정 확인
 Ansible ping 테스
 
-🔧 (1) Inventory 파일 생성
+- 🔧 (1) Inventory 파일 생성
 Ansible 기본 경로는 /etc/ansible/hosts 이지만
 프로젝트 폴더를 만들고 관리하는것이 좋다
 ```
@@ -63,7 +71,7 @@ nodes 그룹 이름에 node2, node3 등록
 전체 서버는 root 계정 SSH로 접근
 SSH 키는 id_rsa 사용(1단계에서 생성한 키)
 
-🔧 (2) Inventory 사용하도록 ansible.cfg 설정
+- 🔧 (2) Inventory 사용하도록 ansible.cfg 설정
 ```
 vi ansible.cfg
 [defaults]
@@ -72,7 +80,7 @@ host_key_checking=False             # SSH fingerprint 확인 끔 (자동화 필�
 retry_files_enabled=False           # 실패 호스트 기록 파일 생성 금지
 roles_path = ./roles
 ```
-🔧 (3) vars/packages.yml
+- 🔧 (3) vars/packages.yml
 ```
 ---
 
@@ -123,7 +131,7 @@ web_packages:
   - tomcat-admin-webapps
   - tomcat-webapps
 ```
-🔧  (4) roles/common_packages/tasks/main.yml
+- 🔧  (4) roles/common_packages/tasks/main.yml
 ```
 ---
 - name: Load package variables
@@ -155,7 +163,7 @@ web 그룹에 속한 서버 → base + web 설치
 db 그룹에 속한 서버 → base + db 설치
 다른 서버는 base만 설치됨
 
-🔧 (5) playbooks/install_packages.yml — 실행 시나리오(Playbook)
+- 🔧 (5) playbooks/install_packages.yml — 실행 시나리오(Playbook)
 ```
 ---
 - hosts: all
@@ -173,7 +181,7 @@ db 그룹에 속한 서버 → base + db 설치
 ```
 
 # Role 안에 “설치 검증(verify) 작업”을 추가
-✅ 1단계: Role 안에 verify.yml 생성
+- ✅ 1단계: Role 안에 verify.yml 생성
 ```
 vi roles/common_packages/tasks/verify.yml
 ```
@@ -220,7 +228,7 @@ vi roles/common_packages/tasks/verify.yml
   loop: "{{ db_pkg_check.results }}"
   when: "'db' in group_names"
 ```
-🔥 2단계: main.yml 마지막 줄에 include_tasks 추가
+- 🔥 2단계: main.yml 마지막 줄에 include_tasks 추가
 roles/common_packages/tasks/main.yml 아래에 마지막에 추가:
 ```
 - include_tasks: verify.yml
